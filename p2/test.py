@@ -148,17 +148,17 @@ class Test2(TestBase):
         c2.close()
 
 class Test3(TestBase):
-    # def test_disconnect(self):
-    #     c = self.newClient()
-    #     time.sleep(0.05)
+    def test_disconnect(self):
+        c = self.newClient()
+        time.sleep(0.05)
 
-    #     self.assertTrue(self.reader.countString("connection terminated") == 0,
-    #         "Invalid count of 'connection terminated' strings in logs. Should be 0.")
+        self.assertTrue(self.reader.countString("connection terminated") == 0,
+            "Invalid count of 'connection terminated' strings in logs. Should be 0.")
 
-    #     c.close()
+        c.close()
             
-    #     self.assertTrue(waitFor(lambda: self.reader.countString("connection terminated") == 1),
-    #         "Invalid count of 'connection terminated' strings in logs. Should be 1.")
+        self.assertTrue(waitFor(lambda: self.reader.countString("connection terminated") == 1),
+            "Invalid count of 'connection terminated' strings in logs. Should be 1.")
 
     def test_disconnect1(self):
         c = self.newClient()

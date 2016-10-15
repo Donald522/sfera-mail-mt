@@ -79,10 +79,6 @@ void Server::start() {
                 }
                 std::cout << "accepted connection" << std::endl;
                 send(accept_fd, welcomeMessage.data(), welcomeMessage.length(), 0);
-                // std::string msg = "client " + std::to_string(accept_fd) + " joined\n";
-                // for (auto client : clients) {
-                //     send(client, msg.data(), msg.length(), 0);
-                // }
                 setNonblock(accept_fd);
                 clients.insert(accept_fd);
                 ev.events = EPOLLIN | EPOLLET;
@@ -94,48 +90,48 @@ void Server::start() {
             } else if (events[i].events & EPOLLIN) {
                 bool firstPacket = true;
                 std::string pre = "clientSocket " + std::to_string(events[i].data.fd) + ": ";
-                // while(1) {
-                    ret = recv(events[i].data.fd, buf, sizeof(buf), 0);
-                    if (ret <= 0) {
-                        std::cout << "connection terminated" << std::endl;
-                        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
-                        // break;
-                    } else {
-                        std::string message;
-                        if(buf[ret - 1] != '\n') {
-                            std::string text(buf, static_cast<unsigned long>(ret));
-                            auto it = messages.find(events[i].data.fd);
-                            if(it != messages.end()) {
-                                message += text;
-                                it->second += message;
-                            } else {
-                                message += pre;
-                                message += text;
-                                messages.insert(std::pair<int, std::string>(static_cast<int>(events[i].data.fd), message));
-                            }
+                ret = recv(events[i].data.fd, buf, sizeof(buf), 0);
+                if (ret <= 0) {
+                    std::cout << "connection terminated" << std::endl;
+                    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
+                } else {
+                    std::string message;
+                    if(buf[ret - 1] != '\n') {
+                        std::string text(buf, static_cast<unsigned long>(ret));
+                        auto it = messages.find(events[i].data.fd);
+                        if(it != messages.end()) {
+                            message += text;
+                            it->second += message;
                         } else {
-                            std::string text(buf, static_cast<unsigned long>(ret));
-                            auto it = messages.find(events[i].data.fd);
-                            std::string toClients;
-                            if(it != messages.end()) {
-                                message += text;
-                                it->second += message;
-                                toClients = it->second;
-                                std::cout << it->second << std::endl;
-                                messages.erase(it);
-                            } else {
-                                message += pre;
-                                message += text;
-                                toClients = message;
-                                std::cout << message << std::endl;
-                            }
-                            for (auto client : clients) {
-                                send(client, toClients.data(), toClients.length(), MSG_NOSIGNAL);
-                            }
-                            // break;
+                            message += pre;
+                            message += text;
+                            messages.insert(std::pair<int, std::string>(static_cast<int>(events[i].data.fd), message));
+                        }
+                    } else {
+                        std::string text(buf, static_cast<unsigned long>(ret));
+                        auto it = messages.find(events[i].data.fd);
+                        std::string toClients;
+                        if(it != messages.end()) {
+                            message += text;
+                            it->second += message;
+                            toClients = it->second;
+                            std::cout << it->second << std::endl;
+                            messages.erase(it);
+                        } else {
+                            message += pre;
+                            message += text;
+                            toClients = message;
+                            std::cout << message << std::endl;
+                        }
+                        for (auto client : clients) {
+                            send(client, toClients.data(), toClients.length(), MSG_NOSIGNAL);
                         }
                     }
-                // }
+                }
+            } else if (events[i].events & (EPOLLHUP | EPOLLERR)) {
+                close(events[i].data.fd);
+                std::cout << "connection terminated" << std::endl;
+                epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
             }
         }
     }
