@@ -15,6 +15,7 @@
 #include <fcntl.h>
 #include <string>
 #include <iostream>
+#include <map>
 #include <set>
 #include <stdexcept>
 
@@ -41,6 +42,7 @@ private:
     int serverFd;
     int rc;
     std::set<int> clients;
+    std::map<int, std::string> messages;
     std::string welcomeMessage = "Welcome!\n";
 };
 

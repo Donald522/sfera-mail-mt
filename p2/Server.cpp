@@ -79,10 +79,10 @@ void Server::start() {
                 }
                 std::cout << "accepted connection" << std::endl;
                 send(accept_fd, welcomeMessage.data(), welcomeMessage.length(), 0);
-                std::string message = "client " + std::to_string(accept_fd) + " joined\n";
-                for (auto client : clients) {
-                    send(client, message.data(), message.length(), 0);
-                }
+                // std::string msg = "client " + std::to_string(accept_fd) + " joined\n";
+                // for (auto client : clients) {
+                //     send(client, msg.data(), msg.length(), 0);
+                // }
                 setNonblock(accept_fd);
                 clients.insert(accept_fd);
                 ev.events = EPOLLIN | EPOLLET;
@@ -93,42 +93,49 @@ void Server::start() {
                 }
             } else if (events[i].events & EPOLLIN) {
                 bool firstPacket = true;
-                while(1) {
+                std::string pre = "clientSocket " + std::to_string(events[i].data.fd) + ": ";
+                // while(1) {
                     ret = recv(events[i].data.fd, buf, sizeof(buf), 0);
-                    if (ret == -1) {
-                        break;
-                    } else if (ret == 0) {
+                    if (ret <= 0) {
                         std::cout << "connection terminated" << std::endl;
                         epoll_ctl(epoll_fd, EPOLL_CTL_DEL, events[i].data.fd, &ev);
-                        break;
+                        // break;
                     } else {
-                        std::string pre = "clientSocket " + std::to_string(events[i].data.fd) + ": ";
                         std::string message;
                         if(buf[ret - 1] != '\n') {
                             std::string text(buf, static_cast<unsigned long>(ret));
-                            std::cout << text << std::flush;
-                            if(firstPacket) {
+                            auto it = messages.find(events[i].data.fd);
+                            if(it != messages.end()) {
+                                message += text;
+                                it->second += message;
+                            } else {
                                 message += pre;
-                                firstPacket = false;
-                            }
-                            message += text;
-                            for (auto client : clients) {
-                                send(client, message.data(), message.length(), MSG_NOSIGNAL);
+                                message += text;
+                                messages.insert(std::pair<int, std::string>(static_cast<int>(events[i].data.fd), message));
                             }
                         } else {
-                            if(firstPacket) {
-                                message += pre;
-                            }
                             std::string text(buf, static_cast<unsigned long>(ret));
-                            std::cout << text << std::flush;
-                            message += text;
-                            for (auto client : clients) {
-                                send(client, message.data(), message.length(), MSG_NOSIGNAL);
+                            auto it = messages.find(events[i].data.fd);
+                            std::string toClients;
+                            if(it != messages.end()) {
+                                message += text;
+                                it->second += message;
+                                toClients = it->second;
+                                std::cout << it->second << std::endl;
+                                messages.erase(it);
+                            } else {
+                                message += pre;
+                                message += text;
+                                toClients = message;
+                                std::cout << message << std::endl;
                             }
-                            break;
+                            for (auto client : clients) {
+                                send(client, toClients.data(), toClients.length(), MSG_NOSIGNAL);
+                            }
+                            // break;
                         }
                     }
-                }
+                // }
             }
         }
     }
